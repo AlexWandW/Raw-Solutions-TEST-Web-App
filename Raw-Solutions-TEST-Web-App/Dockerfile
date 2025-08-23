@@ -12,10 +12,11 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Raw-Solutions-TEST-Web-App/Raw-Solutions-TEST-Web-App.csproj", "Raw-Solutions-TEST-Web-App/"]
-RUN dotnet restore "./Raw-Solutions-TEST-Web-App/Raw-Solutions-TEST-Web-App.csproj"
+# COPY ["Raw-Solutions-TEST-Web-App/Raw-Solutions-TEST-Web-App.csproj", "Raw-Solutions-TEST-Web-App/"]
+COPY ["Raw-Solutions-TEST-Web-App.csproj", "./"]
+# RUN dotnet restore "./Raw-Solutions-TEST-Web-App/Raw-Solutions-TEST-Web-App.csproj"
+RUN dotnet restore "./Raw-Solutions-TEST-Web-App.csproj"
 COPY . .
-WORKDIR "/src/Raw-Solutions-TEST-Web-App"
 RUN dotnet build "./Raw-Solutions-TEST-Web-App.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
