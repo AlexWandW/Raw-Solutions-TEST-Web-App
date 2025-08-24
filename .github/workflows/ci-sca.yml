@@ -1,1 +1,9 @@
+name: SCA Scan w/ Tivy
+
+on:
+  workflow_run:
+    workflows:
+      - "Build Pipeline"
+    types:
+      - completed
 
