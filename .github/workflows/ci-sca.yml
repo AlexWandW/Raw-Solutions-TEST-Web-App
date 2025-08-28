@@ -21,7 +21,7 @@ jobs:
         with:
           scan-type: 'fs'
           ingore-unfixed: true
-          severity: 'CRITICAL, HIGH'
+          severity: 'CRITICAL,HIGH'
 
         
       
