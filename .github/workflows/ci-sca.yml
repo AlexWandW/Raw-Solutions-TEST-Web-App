@@ -18,5 +18,11 @@ jobs:
 
       - name: Run Trivy
         uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ingore-unfixed: true
+          severity: 'CRITICAL, HIGH'
+
+        
       
 
