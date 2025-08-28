@@ -7,3 +7,16 @@ on:
     types:
       - completed
 
+jobs:
+  sca:
+    name: SCA Scan w/ Trivy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@master
+      
+
