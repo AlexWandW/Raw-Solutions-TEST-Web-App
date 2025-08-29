@@ -23,6 +23,6 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-app.MapGet("/health", () => Results.Ok("OK")); 
+app.MapGet("/health", () => Results.Ok("OK"));  
 
 app.Run();
