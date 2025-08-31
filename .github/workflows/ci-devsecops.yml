@@ -129,7 +129,7 @@ jobs:
           path: myapp.tar
 
       - name: Load docker image for DAST
-        run: docker load -i myapp.tar
+        run: docker load -i myapp-image/myapp.tar
 
       - name: Start application docker container from loaded image
         run: docker run -d -p 8080:80 --name myapp myapp:latest
