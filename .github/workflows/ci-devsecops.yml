@@ -33,6 +33,15 @@ jobs:
         working-directory: Raw-Solutions-TEST-Web-App
         run: docker build -t myapp:latest .
 
+      - name: Save docker image
+        run: docker save myapp:latest -o myapp.tar
+
+      - name: Upload image
+        uses: actions/upload-artifact@v4
+        with:
+          name: myapp-image
+          path: myapp.tar
+
   sast:
     name: SAST w/ SonarQube      
     runs-on: windows-latest
