@@ -36,7 +36,7 @@ jobs:
       - name: Save docker image
         run: docker save myapp:latest -o myapp.tar
 
-      - name: Upload image
+      - name: Upload docker image as artifact
         uses: actions/upload-artifact@v4
         with:
           name: myapp-image
@@ -95,7 +95,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Trivy
+      - name: Run Trivy scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -122,10 +122,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Start application docker container
+      - name: Download docker image for DAST
+        uses: actions/download-artifact@v5
+        with:
+          name: myapp-image
+          path: myapp.tar
+
+      - name: Load docker image for DAST
+        run: docker load -i myapp.tar
+
+      - name: Start application docker container from loaded image
         run: docker run -d -p 8080:80 --name myapp myapp:latest
 
-      - name: Run OWASP ZAP Scan
+      - name: Run baseline OWASP ZAP scan
         uses: zaproxy/action-baseline@v0.14.0
         with: 
           target: 'http://localhost:8080'
