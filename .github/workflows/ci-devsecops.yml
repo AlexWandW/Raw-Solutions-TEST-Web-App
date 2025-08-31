@@ -126,7 +126,7 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: myapp-image
-          path: myapp.tar
+          path: ./myapp-image
 
       - name: Load docker image for DAST
         run: docker load -i myapp-image/myapp.tar
