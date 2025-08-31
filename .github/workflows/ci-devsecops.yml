@@ -133,7 +133,7 @@ jobs:
         run: docker load -i myapp-image/myapp.tar
 
       - name: Start application docker container from loaded image
-        run: docker run -d -p 8080:80 --name myapp myapp:latest
+        run: docker run -d -p 8080:8080 --name myapp myapp:latest
 
       - name: Wait for application to be ready
         run: |
