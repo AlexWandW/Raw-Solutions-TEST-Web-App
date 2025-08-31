@@ -82,7 +82,7 @@ jobs:
     runs-on: windows-latest
     needs: 
       - build
-      - image-scan
+
     steps:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -153,6 +153,7 @@ jobs:
       - build
       - sast
       - sca
+      - image-scan
       
     steps:
       - name: Checkout repository
