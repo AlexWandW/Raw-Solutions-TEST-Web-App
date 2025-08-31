@@ -108,3 +108,19 @@ jobs:
       - build
       - sast
       - sca
+      
+    steps:
+      - name: Checkout repository
+      - uses: actions/checkout@v4
+
+      - name: Start application docker container
+        run: docker run -d -p 8080:80 --name myapp myapp:latest
+
+      - name: Run OWASP ZAP Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with: 
+          target: 'http://localhost:8080'
+          cmd-options: '-a'
+          
+        
+    
