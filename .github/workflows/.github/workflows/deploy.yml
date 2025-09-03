@@ -29,6 +29,6 @@ name: Publish
 name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        app-name: ${{ env.rawsolutions }}
         publish-profile: ${{ secrets.AZUREAPPPUBLISHPROFILE }}
         package: publish
