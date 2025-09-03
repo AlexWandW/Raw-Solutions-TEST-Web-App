@@ -61,19 +61,19 @@ jobs:
 
       # ---------- SonarQube (optional) ----------
       - name: SonarQube Scanner (optional)
-        if: ${{ secrets.SONAR_TOKEN != '' && env.SONAR_HOST_URL != '' && env.SONAR_PROJECT_KEY != '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          sudo apt-get update && sudo apt-get install -y unzip
-          curl -sL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-5.0.1.3006-linux.zip -o sonar.zip
-          unzip -q sonar.zip
-          export PATH="$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
-          sonar-scanner \
-            -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
-            -Dsonar.login=${SONAR_TOKEN} \
-            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }} \
-            -Dsonar.sources=.
+          if [ -n "$SONAR_TOKEN" ] && [ -n "${{ env.SONAR_HOST_URL }}" ] && [ -n "${{ env.SONAR_PROJECT_KEY }}" ]; then
+            echo "Running SonarQube analysis..."
+            sonar-scanner \
+              -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
+              -Dsonar.login=${SONAR_TOKEN} \
+              -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }} \
+              -Dsonar.sources=.
+          else
+            echo "Skipping SonarQube: missing token or config."
+          fi
 
       # ---------- OWASP ZAP (baseline, non-failing by default) ----------
       - name: Install OWASP ZAP
