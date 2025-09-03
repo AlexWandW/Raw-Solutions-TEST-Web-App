@@ -1,7 +1,7 @@
  name: Build & Deploy ASP.NET to Azure
  on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
  env:
@@ -16,7 +16,7 @@
       uses: actions/checkout@v4
 
       
-    - name: Setup.NET
+    - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
          dotnet-version: '8.0.x'
