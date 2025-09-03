@@ -1,4 +1,4 @@
-name: Build & Deploy ASP.NET to Azure
+- name: Build & Deploy ASP.NET to Azure
 on:
   push:
     branches: [ main ]
@@ -12,23 +12,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       
-name: Checkout
+- name: Checkout
       uses: actions/checkout@v4
 
       
-name: Setup .NET
+- name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
 
       
-name: Publish
+- name: Publish
       run: dotnet publish -c Release -o publish
 
       
-name: Deploy to Azure Web App
+- name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ env.rawsolutions }}
         publish-profile: ${{ secrets.AZUREAPPPUBLISHPROFILE }}
-        package: publish
+        package: ./publish
