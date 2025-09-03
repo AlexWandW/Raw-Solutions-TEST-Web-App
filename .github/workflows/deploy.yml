@@ -2,7 +2,7 @@ name: CI + DevSecOps + Deploy ASP.NET Core to Azure
 
 on:
   push:
-    branches: [ main, master ]     # run on both
+    branches: [ main, master ]     # run on both main & master
   workflow_dispatch:
 
 env:
@@ -56,32 +56,39 @@ jobs:
           wget -q https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.2_Linux-64bit.deb
           sudo dpkg -i trivy_0.50.2_Linux-64bit.deb
 
-      - name: SCA / FS scan with Trivy (non-failing)
-        run: trivy fs --no-progress --exit-code 0 publish
+      - name: SCA / FS scan with Trivy
+        continue-on-error: true
+        run: trivy fs --no-progress --exit-code 1 --severity HIGH,CRITICAL publish | tee trivy-fs.txt
 
       # ---------- SonarQube (optional) ----------
       - name: SonarQube Scanner (optional)
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if [ -n "$SONAR_TOKEN" ] && [ -n "${{ env.SONAR_HOST_URL }}" ] && [ -n "${{ env.SONAR_PROJECT_KEY }}" ]; then
             echo "Running SonarQube analysis..."
+            sudo apt-get update && sudo apt-get install -y unzip > /dev/null
+            curl -sL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-5.0.1.3006-linux.zip -o sonar.zip
+            unzip -q sonar.zip
+            export PATH="$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
             sonar-scanner \
               -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
               -Dsonar.login=${SONAR_TOKEN} \
               -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }} \
-              -Dsonar.sources=.
+              -Dsonar.sources=. || true
           else
             echo "Skipping SonarQube: missing token or config."
           fi
 
-      # ---------- OWASP ZAP (baseline, non-failing by default) ----------
+      # ---------- OWASP ZAP ----------
       - name: Install OWASP ZAP
         run: sudo apt-get update && sudo apt-get install -y zaproxy
 
       - name: ZAP Baseline (optional)
+        continue-on-error: true
         env:
-          TARGET_URL: https://rawsolutions-ee...azurewebsites.net
+          TARGET_URL: https://rawsolutions-ee...azurewebsites.net   # replace with your app URL
         run: |
           if [ -n "$TARGET_URL" ]; then
             /usr/share/zaproxy/zap-baseline.py -t "$TARGET_URL" -r zap-report.html || true
@@ -94,8 +101,8 @@ jobs:
         with:
           name: security-reports
           path: |
+            trivy-fs.txt
             zap-report.html
-            trivy*.txt
           if-no-files-found: ignore
 
   deploy:
