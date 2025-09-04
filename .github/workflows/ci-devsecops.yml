@@ -164,7 +164,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout repository
-        uses: actions/checkout@4
+        uses: actions/checkout@v4
 
       - name: Init CodeQL
         uses: github/codeql-action/init@v3
