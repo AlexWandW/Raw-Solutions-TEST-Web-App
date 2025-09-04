@@ -52,10 +52,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Gitleaks to run directly
+        # Install latest version of Gitleaks at time of development (8.20.0)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.20.0_linux_x64.tar.gz \
+          | tar -xz
+          sudo mv gitleaks /usr/local/bin/
+
       - name: Run Gitleaks Secret Scan
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --source . --redact --report-format sarif --report-path gitleaks-secret-scan-results.sarif
+        run: |
+          gitleaks detect --source . --redact --report-format sarif --report-path gitleaks-secret-scan-results.sarif
 
       - name: Upload Gitleaks Secret Scan output as artifact
         uses: actions/upload-artifact@v4
