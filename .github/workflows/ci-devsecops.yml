@@ -55,7 +55,7 @@ jobs:
       - name: Run Gitleaks Secret Scan
         uses: gitleaks/gitleaks-action@v2
         with:
-          args: detect --source . \ --report-format sarif \ --report-path gitleaks-secret-scan-results.sarif 
+          args: detect --source . --redact --report-format sarif --report-path gitleaks-secret-scan-results.sarif
 
       - name: Upload Gitleaks Secret Scan output as artifact
         uses: actions/upload-artifact@v4
