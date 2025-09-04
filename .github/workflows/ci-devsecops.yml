@@ -55,7 +55,7 @@ jobs:
       - name: Install Gitleaks to run directly
         # Install latest version of Gitleaks at time of development (8.20.0)
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.20.0_linux_x64.tar.gz \
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz \
           | tar -xz
           sudo mv gitleaks /usr/local/bin/
 
