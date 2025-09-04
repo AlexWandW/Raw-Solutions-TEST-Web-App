@@ -61,13 +61,13 @@ jobs:
 
       - name: Run Gitleaks Secret Scan
         run: |
-          gitleaks detect --source . --redact --report-format sarif --report-path gitleaks-secret-scan-results.sarif
+          gitleaks detect --source . --redact --report-format sarif --report-path secret-scan-results.sarif
 
       - name: Upload Gitleaks Secret Scan output as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gitleaks-secret-scan-results
-          path: gitleaks-secret-scan-results.sarif
+          name: secret-scan-results
+          path: secret-scan-results.sarif
 
   image-scan:
     name: Image Scan w/ Trivy
@@ -92,64 +92,99 @@ jobs:
         with:
           image-ref: myapp:latest
           format: 'sarif'
-          output: 'trivy-image-scan-results.sarif'
+          output: 'image-scan-results.sarif'
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
 
       - name: Upload Trivy Image Scan output as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-image-scan-results
-          path: trivy-image-scan-results.sarif
+          name: image-scan-results
+          path: image-scan-results.sarif
+
+  ###
+  ### Had to get rid of SonarQube SAST as its client-server, and is too difficult to export to JSON or SARIF
+  ###
+  # sast:
+  #   name: SAST w/ SonarQube      
+  #   runs-on: windows-latest
+  #   needs: 
+  #     - build
+  #   steps:
+  #     - name: Set up JDK 17
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         java-version: 17
+  #         distribution: 'zulu' # Alternative distribution options are available.
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+  #     - name: Cache SonarQube Cloud packages
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: ~\sonar\cache
+  #         key: ${{ runner.os }}-sonar
+  #         restore-keys: ${{ runner.os }}-sonar
+  #     - name: Cache SonarQube Cloud scanner
+  #       id: cache-sonar-scanner
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: .\.sonar\scanner
+  #         key: ${{ runner.os }}-sonar-scanner
+  #         restore-keys: ${{ runner.os }}-sonar-scanner
+  #     - name: Install SonarQube Cloud scanner
+  #       if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+  #       shell: powershell
+  #       run: |
+  #         New-Item -Path .\.sonar\scanner -ItemType Directory
+  #         dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+  #     - name: Build and analyze
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #       shell: powershell
+  #       run: |
+
+  #         .\.sonar\scanner\dotnet-sonarscanner begin /k:"AlexWandW_Raw-Solutions-TEST-Web-App" /o:"alexwandw" /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+  #         dotnet build
+  #         .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+  #     - name: Upload SonarQube output as artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: sast-results
+  #         path: sast-results.json
 
   sast:
-    name: SAST w/ SonarQube      
-    runs-on: windows-latest
-    needs: 
-      - build
+    name: SAST w/ CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    needs: build
     steps:
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: 'zulu' # Alternative distribution options are available.
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Cache SonarQube Cloud packages
-        uses: actions/cache@v4
-        with:
-          path: ~\sonar\cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache SonarQube Cloud scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v4
-        with:
-          path: .\.sonar\scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
-      - name: Install SonarQube Cloud scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        shell: powershell
-        run: |
-          New-Item -Path .\.sonar\scanner -ItemType Directory
-          dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
-      - name: Build and analyze
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        shell: powershell
-        run: |
+      - name: Checkout repository
+        uses: actions/checkout@4
 
-          .\.sonar\scanner\dotnet-sonarscanner begin /k:"AlexWandW_Raw-Solutions-TEST-Web-App" /o:"alexwandw" /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
-          dotnet build
-          .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+      - name: Init CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp, javascript
+          queries: security-extended,security-and-quality
+      
+      - name: Autobuild project
+        uses: github/codeql-action/autobuild@v3
 
-      - name: Upload SonarQube output as artifact
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          output: sast-results.sarif
+
+      - name: Upload CodeQL SAST output as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sonarqube-sast-results
-          path: sonarqube-sast-results.json
+          name: sast-results
+          path: sast-results.sarif
 
   sca:
     name: SCA w/ Trivy
@@ -166,14 +201,14 @@ jobs:
           scan-type: 'fs'
           ignore-unfixed: true
           format: 'sarif'
-          output: 'SCA-trivy-results.sarif'
+          output: 'sca-results.sarif'
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy SAST output as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SCA-trivy-results
-          path: SCA-trivy-results.sarif
+          name: sca-results
+          path: sca-results.sarif
 
   dast:
     name: DAST w/ OWASP Zap
