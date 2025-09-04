@@ -248,6 +248,9 @@ jobs:
           cmd_options: '-a -J dast-results.json'
           allow_issue_writing: false
 
+      - name: Rename ZAP report for easier exporting
+        run: mv report_json.json dast-results.json
+
       - name: Upload ZAP DAST output as artifact
         uses: actions/upload-artifact@v4
         with:
