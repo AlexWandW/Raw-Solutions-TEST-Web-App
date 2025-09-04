@@ -145,6 +145,12 @@ jobs:
           dotnet build
           .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
+      - name: Upload SonarQube output as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarqube-sast-results
+          path: sonarqube-sast-results.json
+
   sca:
     name: SCA w/ Trivy
     runs-on: ubuntu-latest
@@ -163,11 +169,11 @@ jobs:
           output: 'SCA-trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
 
-      # - name: Upload Trivy SAST output as artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: SCA-trivy-results
-      #     path: SCA-trivy-results.sarif
+      - name: Upload Trivy SAST output as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SCA-trivy-results
+          path: SCA-trivy-results.sarif
 
   dast:
     name: DAST w/ OWASP Zap
