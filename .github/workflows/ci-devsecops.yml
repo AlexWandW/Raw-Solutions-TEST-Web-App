@@ -161,7 +161,8 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    needs: build
+    needs: 
+      - build
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -218,6 +219,7 @@ jobs:
       - sast
       - sca
       - image-scan
+      - secret-scan
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -246,9 +248,6 @@ jobs:
         with: 
           target: 'http://localhost:8080'
           allow_issue_writing: false
-
-      - name: Rename OWASP ZAP output for consistency
-        run: mv zap_scan.json dast-results.json
           
           
         
