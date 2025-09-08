@@ -1,0 +1,53 @@
+name: Uploads security tool output to DefectDojo
+description: Automatically uploads results of a security scan to DefectDojo. Engagement ID and selection of import or reimport scan is automatic.
+inputs:
+  file:
+    required: true
+  scan_type:
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Upload results to DefectDojo
+      shell: bash
+      run: |
+        set -e
+        if ["${GITHUB_REF_NAME}" = "master"]; then
+          ENGAGEMENT_ID = ${{secrets.MASTER_ENGAGEMENT_ID}}
+        else
+          ENGAGEMENT_ID = ${{secrets.DEVELOPMENT_ENGAGEMENT_ID}}
+        fi
+
+        FILE = "${{inputs.file}}"
+        SCAN_TYPE = "${{$inputs.scan_type}}"
+
+        SCAN_EXISTS = $(curl -s -H "Authorization: Token ${{secrets.DEFECTDOJO_API_KEY}}" \
+          "${{secrets.DEFECTDOJO_HOST}}/api/v2/tests/?engagement=$ENGAGEMENT_ID&test_type=$SCAN_TYPE" \
+          | jq '.count')
+
+        if ["$SCAN_EXISTS" -gt 0]; then
+          echo "$SCAN_TYPE found, Reimportaning scan..."
+          curl -s -X POST "${{secrets.DEFECTDOJO_HOST}}/api/v2/reimport-scan/" \
+            -H "Authorization: Token ${{secrets.DEFECTDOJO_API_KEY}}" \
+            -F "engagement=$ENGAGEMENT_ID" \
+            -F "scan_type:$SCAN_TYPE" \
+            -F "file=@$FILE" \
+            -F "active=true" \
+            -F "verified=true"
+        else
+          echo "$SCAN_TYPE not found, Importing scan..."
+          curl -s -X POST "${{secrets.DEFECTDOJO_HOST}}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{secrets.DEFECTDOJO_API_KEY}}" \
+            -F "engagement=$ENGAGEMENT_ID" \
+            -F "scan_type:$SCAN_TYPE" \
+            -F "file=@$FILE" \
+            -F "active=true" \
+            -F "verified=true"
+        fi
+            
+            
+
+          
+      
+  
