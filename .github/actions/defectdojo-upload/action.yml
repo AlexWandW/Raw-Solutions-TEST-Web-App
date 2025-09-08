@@ -13,41 +13,37 @@ runs:
       shell: bash
       run: |
         set -e
-        if ["${GITHUB_REF_NAME}" = "master"]; then
-          ENGAGEMENT_ID = ${{secrets.MASTER_ENGAGEMENT_ID}}
+        if [ "${GITHUB_REF_NAME}" = "master" ]; then
+          ENGAGEMENT_ID=${{ secrets.MASTER_ENGAGEMENT_ID }}
         else
-          ENGAGEMENT_ID = ${{secrets.DEVELOPMENT_ENGAGEMENT_ID}}
+          ENGAGEMENT_ID=${{ secrets.DEVELOPMENT_ENGAGEMENT_ID }}
         fi
 
-        FILE = "${{inputs.file}}"
-        SCAN_TYPE = "${{$inputs.scan_type}}"
+        FILE="${{ inputs.file }}"
+        SCAN_TYPE="${{ inputs.scan_type }}"
 
-        SCAN_EXISTS = $(curl -s -H "Authorization: Token ${{secrets.DEFECTDOJO_API_KEY}}" \
-          "${{secrets.DEFECTDOJO_HOST}}/api/v2/tests/?engagement=$ENGAGEMENT_ID&test_type=$SCAN_TYPE" \
+        SCAN_EXISTS=$(curl -s -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
+          "${{ secrets.DEFECTDOJO_HOST }}/api/v2/tests/?engagement=$ENGAGEMENT_ID&test_type=$SCAN_TYPE" \
           | jq '.count')
 
-        if ["$SCAN_EXISTS" -gt 0]; then
-          echo "$SCAN_TYPE found, Reimportaning scan..."
-          curl -s -X POST "${{secrets.DEFECTDOJO_HOST}}/api/v2/reimport-scan/" \
-            -H "Authorization: Token ${{secrets.DEFECTDOJO_API_KEY}}" \
+        if [ "$SCAN_EXISTS" -gt 0 ]; then
+          echo "$SCAN_TYPE found, Reimporting scan..."
+          curl -sS -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/reimport-scan/" \
+            -H "Authorization: Token ${ {secrets.DEFECTDOJO_API_KEY }}" \
             -F "engagement=$ENGAGEMENT_ID" \
-            -F "scan_type:$SCAN_TYPE" \
+            -F "scan_type=$SCAN_TYPE" \
             -F "file=@$FILE" \
             -F "active=true" \
-            -F "verified=true"
+            -F "verified=true" \
+            -F "minimum_severity=Low"
         else
           echo "$SCAN_TYPE not found, Importing scan..."
-          curl -s -X POST "${{secrets.DEFECTDOJO_HOST}}/api/v2/import-scan/" \
-            -H "Authorization: Token ${{secrets.DEFECTDOJO_API_KEY}}" \
+          curl -sS -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "engagement=$ENGAGEMENT_ID" \
-            -F "scan_type:$SCAN_TYPE" \
+            -F "scan_type=$SCAN_TYPE" \
             -F "file=@$FILE" \
             -F "active=true" \
-            -F "verified=true"
+            -F "verified=true" \
+            -F "minimum_severity=Low"
         fi
-            
-            
-
-          
-      
-  
