@@ -69,6 +69,12 @@ jobs:
           name: secret-scan-results
           path: secret-scan-results.sarif
 
+      - name: Upload artifact to DefectDojo
+        uses: ./github/actions/defectdojo-upload
+        with:
+          file: secret-scan-results.sarif
+          scan-type: "Gitleaks Scan"
+
   image-scan:
     name: Image Scan w/ Trivy
     runs-on: ubuntu-latest
