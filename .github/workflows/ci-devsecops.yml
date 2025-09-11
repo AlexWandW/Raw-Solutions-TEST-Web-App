@@ -74,6 +74,10 @@ jobs:
         with:
           file: secret-scan-results.sarif
           scan-type: "Gitleaks Scan"
+          master_engagement_id: ${{ secrets.MASTER_ENGAGEMENT_ID }}
+          development_engagement_id: ${{ secrets.DEVELOPMENT_ENGAGEMENT_ID }}
+          defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
+          defectdojo_host: ${{ secrets.DEFECTDOJO_HOST }}
 
   image-scan:
     name: Image Scan w/ Trivy
