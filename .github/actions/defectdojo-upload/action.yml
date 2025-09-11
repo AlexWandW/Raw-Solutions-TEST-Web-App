@@ -22,7 +22,6 @@ runs:
     - name: Upload results to DefectDojo
       shell: bash
       run: |
-        set -e
         if [ "${{ inputs.branch_name }}" = "master" ]; then
           ENGAGEMENT_ID=${{ inputs.master_engagement_id }}
         else
