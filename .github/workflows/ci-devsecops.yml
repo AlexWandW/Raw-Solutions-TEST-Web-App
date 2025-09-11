@@ -73,7 +73,7 @@ jobs:
         uses: ./.github/actions/defectdojo-upload
         with:
           file: secret-scan-results.sarif
-          scan-type: "Gitleaks Scan"
+          scan_type: "Gitleaks Scan"
           master_engagement_id: ${{ secrets.MASTER_ENGAGEMENT_ID }}
           development_engagement_id: ${{ secrets.DEVELOPMENT_ENGAGEMENT_ID }}
           defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
