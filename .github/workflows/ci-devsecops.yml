@@ -78,6 +78,7 @@ jobs:
           development_engagement_id: ${{ secrets.DEVELOPMENT_ENGAGEMENT_ID }}
           defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
           defectdojo_host: ${{ secrets.DEFECTDOJO_HOST }}
+          branch_name: ${{ github.ref_name }}
 
   image-scan:
     name: Image Scan w/ Trivy
