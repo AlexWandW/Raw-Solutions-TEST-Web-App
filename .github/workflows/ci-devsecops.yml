@@ -70,7 +70,7 @@ jobs:
           path: secret-scan-results.sarif
 
       - name: Upload artifact to DefectDojo
-        uses: ./github/actions/defectdojo-upload
+        uses: ./.github/actions/defectdojo-upload
         with:
           file: secret-scan-results.sarif
           scan-type: "Gitleaks Scan"
