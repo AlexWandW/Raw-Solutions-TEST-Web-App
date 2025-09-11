@@ -13,7 +13,8 @@ inputs:
     required: true
   defectdojo_host:
     required: true
-  
+  branch_name:
+    required: true
 
 runs:
   using: 'composite'
@@ -22,7 +23,7 @@ runs:
       shell: bash
       run: |
         set -e
-        if [ "${GITHUB_REF_NAME}" = "master" ]; then
+        if [ "${{ inputs.branch_name }}" = "master" ]; then
           ENGAGEMENT_ID=${{ inputs.master_engagement_id }}
         else
           ENGAGEMENT_ID=${{ inputs.development_engagement_id }}
