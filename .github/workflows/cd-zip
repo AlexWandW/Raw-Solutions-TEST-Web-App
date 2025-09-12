@@ -2,7 +2,7 @@ name: CD (Zip Deploy + Post-Deploy Security)
 
 on:
   workflow_run:
-    workflows: ["CI DevSecOps Pipeline"]   # must match the CI workflow name
+    workflows: ["CI DevSecOps Pipeline"]   # must match the CI 'name'
     types: [completed]
     branches: [master]
 
@@ -74,7 +74,7 @@ jobs:
       - name: ZAP Baseline against Prod
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: ${{ https://rawsolutions-eecwheajgygcarcg.australiaeast-01.azurewebsites.net/ }}           # e.g., https://rawsolutions.azurewebsites.net
+          target: ${{ secrets.PROD_URL }}           # e.g., https://rawsolutions.azurewebsites.net
           allow_issue_writing: false
           cmd_options: >-
             -m 15 -t ${{ secrets.PROD_URL }} -r zap-baseline-report.html
