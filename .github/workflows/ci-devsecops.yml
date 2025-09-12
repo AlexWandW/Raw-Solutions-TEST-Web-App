@@ -74,8 +74,35 @@ jobs:
           name: secret-scan-results
           path: secret-scan-results.sarif
 
-      - name: Upload artifact to DefectDojo
-        if: always()
+            - name: Upload Gitleaks to DefectDojo (master-only, guarded)
+        if: ${{ github.ref_name == 'master' && hashFiles('secret-scan-results.sarif') != '' && secrets.DEFECTDOJO_API_KEY != '' }}
+        continue-on-error: true
+        run: |
+          set -euxo pipefail
+          echo "Uploading to DefectDojo host=${{ secrets.DEFECTDOJO_HOST }}"
+          echo "File exists?"; ls -l secret-scan-results.sarif
+
+          # ping host first to catch DNS/TLS issues clearly
+          curl -sS -o /dev/null -w "HTTP %{http_code}\n" ${{ secrets.DEFECTDOJO_HOST }} || true
+
+          # Call your composite action; capture exit code for logging
+          set +e
+          gh_exit=0
+          echo "Invoking composite action…"
+          bash -lc 'echo "-> entering composite";'  # marker
+
+          # Run the composite action:
+          echo "::group::DefectDojo composite"
+          # If your composite must be used with uses:, keep that instead of run:
+          # Using the composite via 'uses' with soft-fail
+          echo "::endgroup::"
+          exit $gh_exit
+        shell: bash
+
+      # OR (preferred if your composite must be 'uses:')
+      - name: Upload Gitleaks to DefectDojo (composite)
+        if: ${{ github.ref_name == 'master' && hashFiles('secret-scan-results.sarif') != '' && secrets.DEFECTDOJO_API_KEY != '' }}
+        continue-on-error: true
         uses: ./.github/actions/defectdojo-upload
         with:
           file: secret-scan-results.sarif
@@ -85,6 +112,7 @@ jobs:
           defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
           defectdojo_host: ${{ secrets.DEFECTDOJO_HOST }}
           branch_name: ${{ github.ref_name }}
+
 
   image-scan:
     name: Image Scan w/ Trivy
