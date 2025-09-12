@@ -67,41 +67,49 @@ jobs:
       - name: Run Gitleaks Secret Scan
         run: gitleaks detect --source . --redact --report-format sarif --report-path secret-scan-results.sarif
 
-      - name: Upload Gitleaks results
+      - name: Upload Gitleaks results (artifact)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: secret-scan-results
           path: secret-scan-results.sarif
 
-      - name: Upload Gitleaks to DefectDojo (master-only, guarded)
-        if: ${{ github.ref_name == 'master' && hashFiles('secret-scan-results.sarif') != '' && secrets.DEFECTDOJO_API_KEY != '' }}
-        continue-on-error: true
+      # ---- Guarded + non-blocking DefectDojo upload ----
+      - name: DefectDojo preflight (master-only)
+        if: ${{ github.ref_name == 'master' }}
+        id: dd_guard
         run: |
-          set -euxo pipefail
-          echo "Uploading to DefectDojo host=${{ secrets.DEFECTDOJO_HOST }}"
-          echo "File exists?"; ls -l secret-scan-results.sarif
+          set -euo pipefail
+          SKIP="false"
 
-          # ping host first to catch DNS/TLS issues clearly
-          curl -sS -o /dev/null -w "HTTP %{http_code}\n" ${{ secrets.DEFECTDOJO_HOST }} || true
+          # Require SARIF to exist
+          if [ ! -f "secret-scan-results.sarif" ]; then
+            echo "No SARIF file found; skipping Dojo upload."
+            SKIP="true"
+          fi
 
-          # Call your composite action; capture exit code for logging
-          set +e
-          gh_exit=0
-          echo "Invoking composite action…"
-          bash -lc 'echo "-> entering composite";'  # marker
+          # Require host to be set and include scheme
+          HOST="${{ secrets.DEFECTDOJO_HOST }}"
+          if [ -z "$HOST" ]; then
+            echo "DEFECTDOJO_HOST is empty; skipping Dojo upload."
+            SKIP="true"
+          else
+            case "$HOST" in
+              http://*|https://*) : ;;
+              *) echo "DEFECTDOJO_HOST must include http(s)://; skipping Dojo upload."; SKIP="true" ;;
+            esac
+          fi
 
-          # Run the composite action:
-          echo "::group::DefectDojo composite"
-          # If your composite must be used with uses:, keep that instead of run:
-          # Using the composite via 'uses' with soft-fail
-          echo "::endgroup::"
-          exit $gh_exit
-        shell: bash
+          # Require API key
+          if [ -z "${{ secrets.DEFECTDOJO_API_KEY }}" ]; then
+            echo "DEFECTDOJO_API_KEY is empty; skipping Dojo upload."
+            SKIP="true"
+          fi
 
-      # OR (preferred if your composite must be 'uses:')
-      - name: Upload Gitleaks to DefectDojo (composite)
-        if: ${{ github.ref_name == 'master' && hashFiles('secret-scan-results.sarif') != '' && secrets.DEFECTDOJO_API_KEY != '' }}
+          echo "skip=$SKIP" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Gitleaks to DefectDojo (master-only, guarded)
+        if: ${{ github.ref_name == 'master' && steps.dd_guard.outputs.skip != 'true' }}
         continue-on-error: true
         uses: ./.github/actions/defectdojo-upload
         with:
@@ -110,9 +118,8 @@ jobs:
           master_engagement_id: ${{ secrets.MASTER_ENGAGEMENT_ID }}
           development_engagement_id: ${{ secrets.DEVELOPMENT_ENGAGEMENT_ID }}
           defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
-          defectdojo_host: ${{ secrets.DEFECTDOJO_HOST }}
+          defectdojo_host: ${{ secrets.DEFECTDOJO_HOST }}   # must include https://
           branch_name: ${{ github.ref_name }}
-
 
   image-scan:
     name: Image Scan w/ Trivy
@@ -141,7 +148,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
 
-      - name: Upload Trivy Image Scan results
+      - name: Upload Trivy Image results (artifact)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -175,7 +182,7 @@ jobs:
         with:
           output: sast-results.sarif
 
-      - name: Upload CodeQL SAST results
+      - name: Upload CodeQL results (artifact)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -200,7 +207,7 @@ jobs:
           output: 'sca-results.sarif'
           severity: 'CRITICAL,HIGH'
 
-      - name: Upload Trivy SCA results
+      - name: Upload Trivy SCA results (artifact)
         if: always()
         uses: actions/upload-artifact@v4
         with:
