@@ -1,187 +1,115 @@
-name: CI DevSecOps Pipeline
+name: CD (Zip Deploy + Post-Deploy Security)
 
 on:
-  push:
-    branches: ["master"]
-  pull_request:
-    branches: ["master"]
+  workflow_run:
+    workflows: ["CI DevSecOps Pipeline"]   # must match the CI 'name'
+    types: [completed]
+    branches: [master]
 
 jobs:
-  build:
-    name: Build Application
+  deploy-staging:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    environment: staging
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build project
-        run: dotnet build --no-restore
-
-      - name: Run tests
-        run: dotnet test --no-build --verbosity normal
-
-      # 🔽 NEW: publish a deployable web package for CD
-      - name: Publish (Release)
-        run: dotnet publish ./Raw-Solutions-TEST-Web-App/Raw-Solutions-TEST-Web-App.csproj -c Release -o ./publish
-
-      - name: Upload web package
-        uses: actions/upload-artifact@v4
+      - name: Download web artifact
+        uses: actions/download-artifact@v5
         with:
           name: webapp
           path: ./publish
 
-      # (keep your container build for scans/DAST-in-CI)
-      - name: Build docker image
-        working-directory: Raw-Solutions-TEST-Web-App
-        run: docker build -t myapp:latest .
-
-      - name: Save docker image
-        run: docker save myapp:latest -o myapp.tar
-
-      - name: Upload docker image as artifact
-        uses: actions/upload-artifact@v4
+      - name: Azure login
+        uses: azure/login@v2
         with:
-          name: myapp-image
-          path: myapp.tar
+          creds: ${{ secrets.AZURE_CREDENTIALS }}    # prefer OIDC/federated if possible
 
-  secret-scan:
-    name: Secret Scan w/ Gitleaks
+      - name: Create Zip
+        run: (cd publish && zip -r ../webapp.zip .)
+
+      - name: Deploy to staging slot
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          slot-name: staging
+          package: webapp.zip
+
+  verify-staging:
+    needs: deploy-staging
     runs-on: ubuntu-latest
-    needs: [build]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Install Gitleaks to run directly
+      - name: Smoke test /health
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz
-          sudo mv gitleaks /usr/local/bin/
-      - name: Run Gitleaks Secret Scan
-        run: gitleaks detect --source . --redact --report-format sarif --report-path secret-scan-results.sarif
-      - name: Upload Gitleaks Secret Scan output as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: secret-scan-results
-          path: secret-scan-results.sarif
-      - name: Upload artifact to DefectDojo
-        uses: ./.github/actions/defectdojo-upload
-        with:
-          file: secret-scan-results.sarif
-          scan_type: "Gitleaks Scan"
-          master_engagement_id: ${{ secrets.MASTER_ENGAGEMENT_ID }}
-          development_engagement_id: ${{ secrets.DEVELOPMENT_ENGAGEMENT_ID }}
-          defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
-          defectdojo_host: ${{ secrets.DEFECTDOJO_HOST }}
-          branch_name: ${{ github.ref_name }}
-
-  image-scan:
-    name: Image Scan w/ Trivy
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Download docker image for Image Scan
-        uses: actions/download-artifact@v5
-        with:
-          name: myapp-image
-          path: ./myapp-image
-      - name: Load docker image for Image Scan
-        run: docker load -i myapp-image/myapp.tar
-      - name: Run Trivy Image Scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: myapp:latest
-          format: 'sarif'
-          output: 'image-scan-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-      - name: Upload Trivy Image Scan output as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-scan-results
-          path: image-scan-results.sarif
-
-  sast:
-    name: SAST w/ CodeQL
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    needs: [build]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Init CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: csharp, javascript
-          queries: security-extended,security-and-quality
-      - name: Autobuild project
-        uses: github/codeql-action/autobuild@v3
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          output: sast-results.sarif
-      - name: Upload CodeQL SAST output as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sast-results
-          path: sast-results.sarif
-
-  sca:
-    name: SCA w/ Trivy
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Run Trivy SCA
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          ignore-unfixed: true
-          format: 'sarif'
-          output: 'sca-results.sarif'
-          severity: 'CRITICAL,HIGH'
-      - name: Upload Trivy SAST output as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sca-results
-          path: sca-results.sarif
-
-  dast:
-    name: DAST w/ OWASP Zap
-    runs-on: ubuntu-latest
-    needs: [build, sast, sca, image-scan, secret-scan]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Download docker image for DAST
-        uses: actions/download-artifact@v5
-        with:
-          name: myapp-image
-          path: ./myapp-image
-      - name: Load docker image for DAST
-        run: docker load -i myapp-image/myapp.tar
-      - name: Start application docker container from loaded image
-        run: docker run -d -p 8080:8080 --name myapp myapp:latest
-      - name: Wait for application to be ready
-        run: |
-          until curl -sf http://localhost:8080; do
-            echo "Waiting for application be ready..."
-            sleep 3
+          set -e
+          for i in {1..40}; do
+            if curl -sf ${{ secrets.STAGING_URL }}/health; then exit 0; fi
+            sleep 5
           done
-      - name: Run baseline OWASP ZAP scan
+          echo "Staging health check failed" && exit 1
+
+  swap-to-prod:
+    needs: verify-staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Swap staging → production
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az webapp deployment slot swap \
+              --resource-group ${{ secrets.AZ_RG }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --slot staging --target-slot production
+
+  post-deploy-security:
+    name: Post-deploy DAST (ZAP) on Prod
+    needs: swap-to-prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: ZAP Baseline against Prod
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: 'http://localhost:8080'
+          target: ${{ secrets.PROD_URL }}           # e.g., https://rawsolutions.azurewebsites.net
           allow_issue_writing: false
+          cmd_options: >-
+            -m 15 -t ${{ secrets.PROD_URL }} -r zap-baseline-report.html
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-postdeploy-report
+          path: zap-baseline-report.html
+
+      - name: Gate on Medium/High alerts
+        run: |
+          set -e
+          HIGHS=$(grep -i "High Alert" -c zap-baseline-report.html || true)
+          MEDS=$(grep -i "Medium Alert" -c zap-baseline-report.html || true)
+          echo "High: $HIGHS  Medium: $MEDS"
+          if [ "${HIGHS:-0}" -gt 0 ] || [ "${MEDS:-0}" -gt 0 ]; then
+            echo "Blocking due to Medium/High findings."
+            exit 1
+          fi
+
+  rollback:
+    name: Rollback (swap back)
+    needs: post-deploy-security
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Swap back production ← staging
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az webapp deployment slot swap \
+              --resource-group ${{ secrets.AZ_RG }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --slot staging --target-slot production
