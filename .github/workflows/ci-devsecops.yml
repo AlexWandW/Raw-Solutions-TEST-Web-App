@@ -74,7 +74,7 @@ jobs:
           name: secret-scan-results
           path: secret-scan-results.sarif
 
-            - name: Upload Gitleaks to DefectDojo (master-only, guarded)
+      - name: Upload Gitleaks to DefectDojo (master-only, guarded)
         if: ${{ github.ref_name == 'master' && hashFiles('secret-scan-results.sarif') != '' && secrets.DEFECTDOJO_API_KEY != '' }}
         continue-on-error: true
         run: |
